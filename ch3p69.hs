@@ -43,6 +43,10 @@ data Direction = TurnL | TurnR | Straight deriving (Eq, Show)
 
 data Point = Point { x :: Double, y :: Double } deriving (Eq, Show)
 
+turns :: [Point]->[Direction]
+turns ps@(a:b:c:_) = firstTurn ps : turns (tail ps)
+turns _ = []
+
 firstTurn :: [Point]->Direction
 firstTurn ((Point ax ay):(Point bx by):(Point cx cy):_) =
   case signum discriminant of
@@ -50,10 +54,6 @@ firstTurn ((Point ax ay):(Point bx by):(Point cx cy):_) =
    0 -> Straight
    1 -> TurnL
   where discriminant = (ay - by) * (cx - bx) + (bx - ax) * (cy - by)
-
-turns :: [Point]->[Direction]
-turns ps@(a:b:c:_) = firstTurn ps : turns (tail ps)
-turns _ = []
 
 withoutTurns :: Direction -> [Point] -> [Point]
 withoutTurns d ps@(a:b:c:rest)
@@ -103,21 +103,33 @@ rand :: Int -> IO Int
 rand maxBound = getStdRandom (randomR (0, maxBound))
   
 main :: IO()
-main = do
+main = printhull 1000
+
+calchull :: Int -> IO()
+calchull n = do 
+  ps <- createRandomPoints 40 20 n
+  let hull = findHull ps in do
+    return ()
+
+printhull :: Int -> IO ()
+printhull n = do
   cls
-  ps <- createRandomPoints 40 20 20
-  let hs = findHull ps in do
-    seqn (map (writeat ".") ps)
-    seqn (map (writeat "*") hs)
-    goto (Point 0 23)
-    seqn (map (putStrLn.show) (sortBy xThenY ps))
-    putStrLn ""
-    seqn (map (putStrLn.show) hs)
-    --goto (Point 0 21)
-    hFlush stdout
-    r <- getChar
-    if r == 'q' then (return ()) else main
-       
+  ps <- createRandomPoints 40 20 n
+  seqn (map (writeat ".") ps)
+  goto (Point 0 21)
+  hFlush stdout
+  let hs = findHull ps in
+   do
+     seqn (map (writeat "*") hs)
+     --goto (Point 0 23)
+     --seqn (map (putStrLn.show) (sortBy xThenY ps))
+     --putStrLn ""
+     --seqn (map (putStrLn.show) hs)
+     goto (Point 0 21)
+     hFlush stdout
+     r <- getChar
+     if r == 'q' then (return ()) else main
+     
 goto :: Point -> IO()
 goto (Point xx yy) =
   putStr ("\ESC[" ++ show (round yy) ++ ";" ++ show (round xx) ++ "H")
