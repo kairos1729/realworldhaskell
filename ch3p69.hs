@@ -1,5 +1,6 @@
 import Data.List hiding (intersperse)
 import System.Random
+import System.IO
 
 count :: Num a => [t] -> a
 count (x:xs) = 1 + count xs
@@ -78,17 +79,17 @@ xThenY p1 p2
   | y p1 > y p2 = GT
   | otherwise = EQ
 
-createRandomPoints :: Int -> Int -> IO [Point]
-createRandomPoints 0 _ = return []
-createRandomPoints n maxXY = do
-  x <- createRandomPoint maxXY
-  xs <- createRandomPoints (n - 1) maxXY
+createRandomPoints :: Int -> Int -> Int -> IO [Point]
+createRandomPoints _ _ 0= return []
+createRandomPoints maxX maxY n = do
+  x <- createRandomPoint maxX maxY
+  xs <- createRandomPoints maxX maxY (n - 1) 
   return (x:xs)
 
-createRandomPoint :: Int -> IO Point
-createRandomPoint maxXY = do
-  x <- rand maxXY
-  y <- rand maxXY
+createRandomPoint :: Int -> Int -> IO Point
+createRandomPoint maxX maxY = do
+  x <- rand maxX
+  y <- rand maxY
   return (Point (fromIntegral x) (fromIntegral y))
 
 rand :: Int -> IO Int
@@ -96,11 +97,36 @@ rand maxBound = getStdRandom (randomR (0, maxBound))
   
 main :: IO()
 main = do
-  ps <- createRandomPoints 100 20
-  putStrLn (show ps)  
-  putStrLn (show (findHull ps))
+  cls
+  ps <- createRandomPoints 40 20 30
+  let hs = findHull ps in do
+    seqn (map (writeat ".") ps)
+    seqn (map (writeat "*") hs)
+--    goto (Point 0 23)
+--    seqn (map (putStrLn.show) ps)
+--    putStrLn ""
+--    seqn (map (putStrLn.show) hs)
+    goto (Point 0 21)
+    hFlush stdout
+    r <- getChar
+    if r == 'q' then (return ()) else main
+       
+goto :: Point -> IO()
+goto (Point xx yy) =
+  putStr ("\ESC[" ++ show (round yy) ++ ";" ++ show (round xx) ++ "H")
 
-  
+writeat :: String -> Point -> IO()
+writeat xs p = do goto p
+                  putStr xs
+
+seqn :: [IO a] -> IO()
+seqn [] = return ()
+seqn (a:as) = do a
+                 seqn as
+
+cls :: IO ()
+cls = putStr "\ESC[2J"
+
 
   
 
