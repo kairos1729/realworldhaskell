@@ -67,9 +67,9 @@ addToHull _ [] hs = hs
 
 findHull :: [Point] -> [Point]
 findHull ps = (reverse.(drop 1)) upper ++ lower
-  where xs = sortBy xThenY ps
-        upper = addToHull TurnR xs []
-        lower = addToHull TurnL xs []
+  where xs = rmdups (sortBy xThenY ps)
+        upper = addToHull TurnL xs []
+        lower = addToHull TurnR xs []
 
 xThenY :: Point -> Point -> Ordering
 xThenY p1 p2
@@ -78,6 +78,13 @@ xThenY p1 p2
   | y p1 < y p2 = LT
   | y p1 > y p2 = GT
   | otherwise = EQ
+
+-- remove duplicates from a sorted list
+rmdups :: [Point] -> [Point]
+rmdups (p1:p2:ps)
+  | xThenY p1 p2 == EQ = rmdups (p1:ps)
+  | otherwise = p1:rmdups (p2:ps)
+rmdups ps = ps
 
 createRandomPoints :: Int -> Int -> Int -> IO [Point]
 createRandomPoints _ _ 0= return []
@@ -98,15 +105,15 @@ rand maxBound = getStdRandom (randomR (0, maxBound))
 main :: IO()
 main = do
   cls
-  ps <- createRandomPoints 40 20 30
+  ps <- createRandomPoints 40 20 20
   let hs = findHull ps in do
     seqn (map (writeat ".") ps)
     seqn (map (writeat "*") hs)
---    goto (Point 0 23)
---    seqn (map (putStrLn.show) ps)
---    putStrLn ""
---    seqn (map (putStrLn.show) hs)
-    goto (Point 0 21)
+    goto (Point 0 23)
+    seqn (map (putStrLn.show) (sortBy xThenY ps))
+    putStrLn ""
+    seqn (map (putStrLn.show) hs)
+    --goto (Point 0 21)
     hFlush stdout
     r <- getChar
     if r == 'q' then (return ()) else main
