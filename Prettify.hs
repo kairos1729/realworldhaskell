@@ -9,6 +9,8 @@ module Prettify (
   , fsep
   , compact
   , pretty
+  , docwidth
+  , fill
   ) where
 
 data Doc = Empty
@@ -101,21 +103,37 @@ _ `fits` ('\n':_) = True
 w `fits` (_:cs) = (w - 1) `fits` cs
 
 fill :: Int -> Doc -> Doc
-fill = undefined
+fill w doc = padlines spaces doc
+  where spaces = text (take (max 0 (w - (docwidth doc))) (repeat ' ' ))
 
-width :: Doc -> Int
-width doc = maximum (linewidths 0 [doc])
-  where linewidths col (d:ds) =
+padlines :: Doc -> Doc -> Doc
+padlines p doc = p <> padlines_iter [doc]
+  where padlines_iter [] = Empty
+        padlines_iter (d:ds) =
           case d of
-           Empty -> linewidths col ds
-           Char _ -> linewidths (col + 1) ds
-           Text s -> linewidths (col + length s) ds
-           Line -> col : linewidths 0 ds
-           a `Concat` b -> linewidths col (a:b:ds)
-           a `Union` _ -> linewidths col (a:ds)
-        linewidths col _ = [col]
+           Line -> d <> p <> padlines_iter ds
+           a `Concat` b -> padlines_iter (a:b:ds)
+           a `Union` _ -> padlines_iter (a:ds)
+           x -> x <> padlines_iter ds
+
+docwidth :: Doc -> Int
+docwidth d = maximum (linewidths d)
+
+linewidths :: Doc -> [Int]
+linewidths doc = linewidths_iter 0 [doc]
+  where linewidths_iter col (d:ds) =
+          case d of
+           Empty -> linewidths_iter col ds
+           Char _ -> linewidths_iter (col + 1) ds
+           Text s -> linewidths_iter (col + length s) ds
+           Line -> col : linewidths_iter 0 ds
+           a `Concat` b -> linewidths_iter col (a:b:ds)
+           a `Union` _ -> linewidths_iter col (a:ds)
+        linewidths_iter col _ = [col]
 
         
+{- Give up here, i don't really understand what the exercises want -}
+
 
   
 

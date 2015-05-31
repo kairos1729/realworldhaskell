@@ -60,9 +60,18 @@ words_foldr xs =
         step c (cs:css) = (c:cs):css
 
 unlines_foldr :: [[Char]] -> [Char]
-unlines_foldr = foldr ((++).(++ "\n")) []
+unlines_foldr = foldr step []
+  where step x acc = (++) ((++ "\n") x) acc
+
+unlines_foldr2 :: [[Char]] -> [Char]
+unlines_foldr2 = foldr ((++).(++ "\n")) []
 
 unlines_foldl :: [[Char]] -> [Char]
 unlines_foldl = foldl' step []
-  where step acc x = acc ++ x ++ "\n"
+  where step acc x = (++ "\n") ((++) acc x)
 
+unlines_foldl2 :: [[Char]] -> [Char]
+unlines_foldl2 = foldl' (((++ "\n") .).(++)) []
+  
+unlines_foldl3 :: [[Char]] -> [Char]
+unlines_foldl3 = foldl' ((++ "\n") $ (++)) []
