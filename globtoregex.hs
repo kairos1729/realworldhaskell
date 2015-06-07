@@ -9,6 +9,7 @@ import Text.Regex.Posix ((=~))
 import Data.Char
 import System.Directory (doesDirectoryExist, doesFileExist,
                          getCurrentDirectory, getDirectoryContents)
+import System.Posix.Files (fileExist)
 import System.FilePath (
   dropTrailingPathSeparator,
   splitFileName,
@@ -26,6 +27,7 @@ globToRegex s cs = '^' : globToRegex' s cs ++ "$"
 globToRegex' :: CaseSensitivity -> String -> String
 globToRegex' _ "" = ""
 
+globToRegex' s ('*':'*':cs) = ".*" ++ globToRegex' s cs
 globToRegex' s ('*':cs) = ".*" ++ globToRegex' s cs
 
 globToRegex' s ('?':cs) = "." ++ globToRegex' s cs
@@ -62,34 +64,52 @@ matchesGlob pat s name = name =~ globToRegex s pat
 isPattern :: String -> Bool
 isPattern = any (`elem` "[*?")
 
-
+namesMatching :: String -> IO [String]
 namesMatching pat
   | not (isPattern pat) = do
       exists <- doesNameExist pat
       return (if exists then [pat] else [])
-  | otherwise = do
-      case splitFileName pat of
-       ("", baseName) -> do
-         curDir <- getCurrentDirectory
-         listMatches curDir baseName
-       (dirName, baseName) -> do
-         dirs <- if isPattern dirName
-                 then namesMatching (dropTrailingPathSeparator dirName)
-                 else return [dirName]
-         let listDir = if isPattern baseName
-                       then listMatches
-                       else listPlain
-         pathNames <- forM dirs $ \dir -> do
-           baseNames <- listDir dir baseName
-           return (map (dir </>) baseNames)
-         return (concat pathNames)
+  | otherwise = findmatching
+  where
+    (dirName, baseName) = splitFileName pat
 
+    findmatching = do
+      if dirName == ""
+        then
+        do
+          curDir <- getCurrentDirectory
+          listMatches curDir baseName
+        else
+        do
+          dirs <- if isPattern dirName
+                  then namesMatching (dropTrailingPathSeparator dirName)
+                  else return [dirName]
+          let listDir = if isPattern baseName
+                        then listMatches
+                        else listPlain
+          pathNames <- forM dirs $ \dir -> do
+            baseNames <- listDir dir baseName
+            recursiveNames <- recursive dir
+            return $ (map (dir </>) baseNames) ++ recursiveNames
+          return (concat pathNames)
+
+    recursive dir =
+      case baseName of
+       ('*':'*':_) -> namesMatching $ dir </> "*" </> baseName
+       _ -> return []
+      
+
+{--
 doesNameExist :: FilePath -> IO Bool
 doesNameExist name = do
   fileExists <- doesFileExist name
   if fileExists
     then return True
     else doesDirectoryExist name
+--}
+
+doesNameExist :: FilePath -> IO Bool
+doesNameExist = fileExist
 
 listMatches :: FilePath -> String -> IO [String]
 listMatches dirName pat = do
@@ -121,3 +141,4 @@ platformCaseSensitivity = if isWindows
 
 isWindows :: Bool
 isWindows = pathSeparator == '\\'
+
