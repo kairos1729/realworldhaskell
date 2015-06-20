@@ -1,5 +1,15 @@
-module MonteCarlo (monteCarlo, cesaroTest, estimatePi, estimatePiMyRand) where
+module MonteCarlo (
+  monteCarlo
+  , cesaroTest
+  , estimatePi
+  , estimatePiMyRand
+  , estimatePiMyStateRand
+  , rands
+  ) where
 import System.Random
+import Control.Applicative
+import Control.Monad
+import Control.Monad.State
 
 -- this is not from real world haskell, but I wanted to try
 -- the monte-carlo exercise from sicp in Haskell since the
@@ -37,7 +47,7 @@ estimatePi numberOfTrials = do
   return $ sqrt (6.0 / mc)
 
 randUpdate :: Int -> Int
-randUpdate x = ((27 * x) + 26) `mod` 127
+randUpdate x = (((1103515245 * x) + 12345) `div` 65536) `mod` 32768
 
 newtype RandomValue a = RandomValue (Int -> (a, Int))
 
@@ -47,6 +57,14 @@ instance Monad RandomValue where
     where newrandom s = r newseed
             where (result, newseed) = rv s
                   RandomValue(r) = f result
+
+instance Functor RandomValue where
+  fmap = liftM
+
+instance Applicative RandomValue where
+  pure = return
+  (<*>) = ap
+  
 
 myCesaroTestMonad :: RandomValue Bool
 myCesaroTestMonad = RandomValue(myCesaroTest)
@@ -60,4 +78,20 @@ estimatePiMyRand :: Int -> Int -> Double
 estimatePiMyRand seed numberOfTrials = sqrt (6.0 / result)
   where RandomValue(mc) = monteCarlo numberOfTrials myCesaroTestMonad
         (result, _) = mc seed
-  
+
+rands :: (Num a, Eq a) => a -> Int -> [Int]
+rands n seed = rands_iter n seed []
+  where rands_iter 0 s1 vals = randUpdate s1 : vals
+        rands_iter num s1 vals = newrand : rands_iter (num - 1) newrand vals
+          where newrand = randUpdate s1
+
+myStateCesaroTest :: State Int Bool
+myStateCesaroTest = state $ \s -> let r1 = randUpdate s
+                                      r2 = randUpdate r1
+                                      in ((gcd r1 r2) == 1, r2)
+
+estimatePiMyStateRand :: Int -> Int -> Double
+estimatePiMyStateRand seed numberOfTrials = sqrt (6.0 / result)
+  where s = runState $ monteCarlo numberOfTrials myStateCesaroTest
+        (result, _) = s seed
+        
