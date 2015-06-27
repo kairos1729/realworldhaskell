@@ -88,10 +88,28 @@ rands n seed = rands_iter n seed []
 myStateCesaroTest :: State Int Bool
 myStateCesaroTest = state $ \s -> let r1 = randUpdate s
                                       r2 = randUpdate r1
-                                      in ((gcd r1 r2) == 1, r2)
+                                      in ((gcd r1 r2) == 1, s + 1)
 
 estimatePiMyStateRand :: Int -> Int -> Double
 estimatePiMyStateRand seed numberOfTrials = sqrt (6.0 / result)
   where s = runState $ monteCarlo numberOfTrials myStateCesaroTest
         (result, _) = s seed
         
+
+type MyRandGen = State Int Int
+
+myrand :: MyRandGen
+myrand  = state $ \s -> let s1 = randUpdate s in
+                         (s1, s1)
+  
+
+mycycle :: Int -> Int -> MyRandGen -> Int
+mycycle max seed rg = cycle_iter seed seed 0
+  where cycle_iter t h n
+          | n > max = -1
+          | otherwise = if (tval == hval) then n else cycle_iter newt newh (n + 1)
+          where (tval, newt) = genrand t
+                (_, temph) = genrand h
+                (hval, newh) = genrand temph
+        genrand = runState rg
+          
