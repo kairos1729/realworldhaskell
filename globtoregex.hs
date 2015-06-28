@@ -95,21 +95,25 @@ namesMatching pat
           dirs <- if isPattern dirName
                   then namesMatching (dropTrailingPathSeparator dirName)
                   else return (Right [dirName])
-          let listDir = if isPattern baseName
-                        then listMatches
-                        else listPlain
           case dirs of
            (Left x) -> return (Left x)
            (Right ds) -> do
-             pathNames <- forM ds $ \dir -> do
-               baseNames <- listDir dir baseName
-               recursiveNames <- recursive dir
-               return $ case (baseNames >>= \b->
-                 recursiveNames >>= \r ->
-                 Right((map (dir </>) b) ++ r)) of
-                        (Left x) -> [x]
-                        (Right x) -> x
-             return (Right (concat pathNames))
+             let listDir = if isPattern baseName
+                           then listMatches
+                           else listPlain
+             test <- listDir "" baseName
+             case test of
+              (Left x) -> return (Left x)
+              (Right _) -> do
+                pathNames <- forM ds $ \dir -> do
+                  baseNames <- listDir dir baseName
+                  recursiveNames <- recursive dir
+                  return $ case (baseNames >>= \b->
+                                  recursiveNames >>= \r ->
+                                  Right((map (dir </>) b) ++ r)) of
+                            (Left x) -> [x]
+                            (Right x) -> x
+                return (Right (concat pathNames))
 
     recursive dir =
       case baseName of
